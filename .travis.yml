@@ -1,5 +1,5 @@
 language: java
-jdk: jdk-16-loom
+jdk: openjdk16
 
 os:
   - linux
