@@ -1,43 +1,100 @@
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Scheduler {
-    private final ArrayList<Continuation> continuations = new ArrayList<>();
-    private final Runnable execution;
+    private SchedulerExecutionPolicyImpl continuations;
+    private interface SchedulerExecutionPolicyImpl {
+        boolean isEmpty();
+        void add(Continuation continuation);
+        Continuation remove();
+    }
+
     public enum SchedulerExecutionPolicy {
-        STACK, FIFO, RANDOM
+        STACK {
+            private final ArrayDeque<Continuation> continuations = new ArrayDeque<>();
+            @Override
+            SchedulerExecutionPolicyImpl createImpl() {
+                return new SchedulerExecutionPolicyImpl() {
+                    @Override
+                    public boolean isEmpty() {
+                        return continuations.isEmpty();
+                    }
+
+                    @Override
+                    public void add(Continuation continuation) {
+                        continuations.offerLast(continuation);
+                    }
+
+                    @Override
+                    public Continuation remove() {
+                        return continuations.pollLast();
+                    }
+                };
+            }
+        },
+        FIFO {
+            private final ArrayDeque<Continuation> continuations = new ArrayDeque<>();
+            @Override
+            SchedulerExecutionPolicyImpl createImpl() {
+                return new SchedulerExecutionPolicyImpl() {
+                    @Override
+                    public boolean isEmpty() {
+                        return continuations.isEmpty();
+                    }
+
+                    @Override
+                    public void add(Continuation continuation) {
+                        continuations.offerLast(continuation);
+                    }
+
+                    @Override
+                    public Continuation remove() {
+                        return continuations.poll();
+                    }
+                };
+            }
+        },
+        RANDOM {
+            private final TreeMap<Integer, ArrayDeque<Continuation>> continuations = new TreeMap<>();
+            @Override
+            SchedulerExecutionPolicyImpl createImpl() {
+                return new SchedulerExecutionPolicyImpl() {
+                    @Override
+                    public boolean isEmpty() {
+                        return continuations.isEmpty();
+                    }
+
+                    @Override
+                    public void add(Continuation continuation) {
+                        var random = ThreadLocalRandom.current().nextInt();
+                        continuations.computeIfAbsent(random, __ -> new ArrayDeque<>()).offer(continuation);
+                    }
+
+                    @Override
+                    public Continuation remove() {
+                        var random = ThreadLocalRandom.current().nextInt();
+                        var key = continuations.floorKey(random);
+                        if(key == null) {
+                            key = continuations.firstKey();
+                        }
+                        var queue = continuations.get(key);
+                        var continuation = queue.poll();
+                        if(queue.isEmpty()) {
+                            continuations.remove(key);
+                        }
+                        return continuation;
+                    }
+                };
+            }
+        };
+
+        abstract SchedulerExecutionPolicyImpl createImpl();
     }
 
     Scheduler(SchedulerExecutionPolicy schedulerExecutionPolicy) {
         Objects.requireNonNull(schedulerExecutionPolicy);
 
-        execution = switch (schedulerExecutionPolicy) {
-            case FIFO -> this::fifoOperation;
-            case STACK -> this::stackOperation;
-            case RANDOM -> this::randomOperation;
-        };
-    }
-
-    private void stackOperation() {
-        var c = continuations.remove(continuations.size() - 1);
-        if(!c.isDone()) {
-            c.run();
-        }
-    }
-
-    private void fifoOperation() {
-        var c = continuations.remove(0);
-        if(!c.isDone()) {
-            c.run();
-        }
-    }
-    private void randomOperation() {
-        var c = continuations.remove(ThreadLocalRandom.current().nextInt(0, continuations.size()));
-        if(!c.isDone()) {
-            c.run();
-        }
+        continuations = schedulerExecutionPolicy.createImpl();
     }
 
     public void enqueue(ContinuationScope scope) {
@@ -56,7 +113,7 @@ public class Scheduler {
         }
 
         while(!continuations.isEmpty()) {
-            execution.run();
+            continuations.remove().run();
         }
     }
 
