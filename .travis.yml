@@ -1,0 +1,9 @@
+language: java
+jdk: jdk-16-loom
+
+os:
+  - linux
+  - osx
+
+script:
+  - mvn package
