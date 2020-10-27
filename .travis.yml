@@ -10,6 +10,8 @@ script:
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then wget https://github.com/forax/java-next/releases/download/untagged-4890d0aa579cf85dd353/jdk-16-loom-linux.tar.gz; fi;
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then export JAVA_HOME=jdk-16-loom-linux.tar.gz; fi;
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then tar xzvf jdk-16-loom-linux.tar.gz; fi;
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then export JAVA_HOME=jdk-16-loom; fi;
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then wget https://download.java.net/java/early_access/loom/6/openjdk-16-loom+6-105_osx-x64_bin.tar.gz; fi;
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then export JAVA_HOME=openjdk-16-loom+6-105_osx-x64_bin.tar.gz; fi;
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then tar xzvf openjdk-16-loom+6-105_osx-x64_bin.tar.gz; fi;
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then export JAVA_HOME=openjdk-16-loom+6-105_osx-x64_bin; fi;
